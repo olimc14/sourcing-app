@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Sourcing Manager</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; min-height: 100vh; }
+
+  .header { background: #fff; border-bottom: 1px solid #e5e5e0; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; }
+  .header-sub { font-size: 13px; color: #888; margin-top: 2px; }
+
+  .main { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+  .top-bar { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+  .btn { padding: 9px 16px; border-radius: 8px; border: 1px solid #d0d0c8; background: #fff; font-size: 14px; font-weight: 500; cursor: pointer; color: #1a1a1a; transition: background 0.15s; display: inline-flex; align-items: center; gap: 7px; }
+  .btn:hover { background: #f5f5f0; }
+  .btn.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .btn.primary:hover { background: #333; }
+  .btn.danger { color: #c0392b; border-color: #f0c0bb; }
+  .btn.danger:hover { background: #fdf0ee; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .refresh-all-btn { background: #1a6b3a; color: #fff; border-color: #1a6b3a; }
+  .refresh-all-btn:hover { background: #155730; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #fff; border: 1px solid #e5e5e0; border-radius: 10px; padding: 14px 16px; }
+  .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; }
+
+  .section-title { font-size: 13px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+
+  .products-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .product-card { background: #fff; border: 1px solid #e5e5e0; border-radius: 12px; overflow: hidden; }
+  .product-header { display: flex; align-items: flex-start; gap: 12px; padding: 16px; }
+  .product-type-badge { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+  .badge-listing { background: #e8f4ec; color: #1a6b3a; }
+  .badge-collection { background: #e8eaf8; color: #3949ab; }
+  .product-info { flex: 1; min-width: 0; }
+  .product-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .product-url { font-size: 12px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+  .product-check-desc { font-size: 13px; color: #555; font-style: italic; }
+  .product-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .icon-btn { width: 32px; height: 32px; border-radius: 7px; border: 1px solid #e0e0d8; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; transition: background 0.15s; }
+  .icon-btn:hover { background: #f5f5f0; }
+  .icon-btn.spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .result-panel { border-top: 1px solid #e5e5e0; padding: 14px 16px; background: #fafafa; }
+  .result-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .result-timestamp { font-size: 11px; color: #aaa; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .status-ok { background: #27ae60; }
+  .status-warn { background: #f39c12; }
+  .status-error { background: #e74c3c; }
+  .status-pending { background: #bbb; }
+  .result-text { font-size: 13px; line-height: 1.6; color: #333; white-space: pre-wrap; }
+  .result-loading { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #888; }
+  .dots::after { content: ''; animation: dots 1.5s steps(4, end) infinite; }
+  @keyframes dots { 0%,100%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+
+  .empty-state { text-align: center; padding: 60px 24px; color: #aaa; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 500; color: #888; margin-bottom: 6px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: #fff; border-radius: 14px; width: 100%; max-width: 540px; padding: 24px; }
+  .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; color: #555; margin-bottom: 6px; }
+  .field input, .field textarea, .field select { width: 100%; padding: 9px 12px; border: 1px solid #d0d0c8; border-radius: 8px; font-size: 14px; font-family: inherit; outline: none; transition: border-color 0.15s; color: #1a1a1a; background: #fff; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: #888; }
+  .field textarea { resize: vertical; min-height: 80px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  .progress-bar { height: 3px; background: #e5e5e0; border-radius: 2px; overflow: hidden; margin-bottom: 20px; display: none; }
+  .progress-bar.visible { display: block; }
+  .progress-fill { height: 100%; background: #1a6b3a; border-radius: 2px; transition: width 0.3s; }
+
+  .api-banner { background: #fff8e1; border: 1px solid #ffe082; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .api-banner p { font-size: 13px; color: #7a6000; margin: 0; }
+  .api-set-bar { background: #eaf3e8; border: 1px solid #b2d8b0; border-radius: 10px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .api-set-bar p { font-size: 13px; color: #1a6b3a; margin: 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header h1" style="font-size:18px;font-weight:600;">📦 Product Sourcing Manager</div>
+    <div class="header-sub">Track products, monitor stock & listings</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div id="apiBanner" class="api-banner" style="display:none;">
+    <p>No API key set — checks will not work until you add one.</p>
+    <button class="btn" onclick="openApiModal()">Add API key</button>
+  </div>
+  <div id="apiSetBar" class="api-set-bar" style="display:none;">
+    <p>API key set — you are good to go.</p>
+    <button class="btn" onclick="openApiModal()">Change key</button>
+  </div>
+
+  <div class="progress-bar" id="progressBar">
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+
+  <div class="top-bar">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn primary" onclick="openAddModal()">+ Add product</button>
+      <button class="btn refresh-all-btn" id="refreshAllBtn" onclick="refreshAll()">↻ Refresh all</button>
+    </div>
+    <div style="font-size:13px;color:#aaa;" id="lastRefreshLabel"></div>
+  </div>
+
+  <div class="stats" id="statsBar">
+    <div class="stat-card"><div class="stat-label">Total products</div><div class="stat-value" id="statTotal">0</div></div>
+    <div class="stat-card"><div class="stat-label">Listings</div><div class="stat-value" id="statListings">0</div></div>
+    <div class="stat-card"><div class="stat-label">Collections</div><div class="stat-value" id="statCollections">0</div></div>
+    <div class="stat-card"><div class="stat-label">Checked today</div><div class="stat-value" id="statChecked">0</div></div>
+  </div>
+
+  <div class="section-title">Your products</div>
+  <div class="products-list" id="productsList"></div>
+
+</div>
+
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="apiModalOverlay">
+  <div class="modal">
+    <h2>API key settings</h2>
+    <p style="font-size:13px;color:#888;margin-bottom:16px;">Your key is stored only in your browser and sent directly to Anthropic. It is never stored anywhere else.</p>
+    <div class="field">
+      <label>Anthropic API key</label>
+      <input type="password" id="fApiKey" placeholder="sk-ant-...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeApiModal()">Cancel</button>
+      <button class="btn primary" onclick="saveApiKey()">Save key</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2 id="modalTitle">Add product</h2>
+    <div class="field">
+      <label>Product title</label>
+      <input type="text" id="fTitle" placeholder="e.g. Nike Air Max 90 White">
+    </div>
+    <div class="field">
+      <label>URL</label>
+      <input type="url" id="fUrl" placeholder="https://...">
+    </div>
+    <div class="field">
+      <label>Page type</label>
+      <select id="fType">
+        <option value="listing">Individual listing page</option>
+        <option value="collection">Product collection page</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Check to perform</label>
+      <textarea id="fCheck" placeholder="e.g. Check stock availability for this product&#10;e.g. List any products shown on this collection page&#10;e.g. Note the price and whether it's in stock"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn primary" id="modalSaveBtn" onclick="saveProduct()">Save product</button>
+    </div>
+  </div>
+</div>
+
+<script>
+
+const API_KEY_STORAGE = 'sourcing_api_key';
+
+function getApiKey() {
+  return localStorage.getItem(API_KEY_STORAGE) || '';
+}
+
+function updateApiBanner() {
+  const key = getApiKey();
+  document.getElementById('apiBanner').style.display = key ? 'none' : 'flex';
+  document.getElementById('apiSetBar').style.display = key ? 'flex' : 'none';
+}
+
+function openApiModal() {
+  document.getElementById('fApiKey').value = getApiKey();
+  document.getElementById('apiModalOverlay').classList.add('open');
+  document.getElementById('fApiKey').focus();
+}
+
+function closeApiModal() {
+  document.getElementById('apiModalOverlay').classList.remove('open');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('fApiKey').value.trim();
+  if (!key) { alert('Please enter your API key.'); return; }
+  localStorage.setItem(API_KEY_STORAGE, key);
+  updateApiBanner();
+  closeApiModal();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const overlay = document.getElementById('apiModalOverlay');
+  if (overlay) overlay.addEventListener('click', function(e) { if (e.target === this) closeApiModal(); });
+});
+
+const STORAGE_KEY = 'sourcing_products_v1';
+let products = [];
+let editingId = null;
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    products = raw ? JSON.parse(raw) : [];
+  } catch(e) { products = []; }
+  render();
+  updateApiBanner();
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+}
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = 'Add product';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fUrl').value = '';
+  document.getElementById('fType').value = 'listing';
+  document.getElementById('fCheck').value = '';
+  document.getElementById('modalSaveBtn').textContent = 'Save product';
+  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('fTitle').focus();
+}
+
+function openEditModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = 'Edit product';
+  document.getElementById('fTitle').value = p.title;
+  document.getElementById('fUrl').value = p.url;
+  document.getElementById('fType').value = p.type;
+  document.getElementById('fCheck').value = p.check;
+  document.getElementById('modalSaveBtn').textContent = 'Update product';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+function saveProduct() {
+  const title = document.getElementById('fTitle').value.trim();
+  const url = document.getElementById('fUrl').value.trim();
+  const type = document.getElementById('fType').value;
+  const check = document.getElementById('fCheck').value.trim();
+  if (!title || !url || !check) { alert('Please fill in all fields.'); return; }
+  if (editingId) {
+    const p = products.find(x => x.id === editingId);
+    Object.assign(p, { title, url, type, check });
+  } else {
+    products.push({ id: uid(), title, url, type, check, result: null, resultStatus: null, checkedAt: null });
+  }
+  save(); render(); closeModal();
+}
+
+function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  products = products.filter(x => x.id !== id);
+  save(); render();
+}
+
+function renderStats() {
+  const today = new Date().toDateString();
+  document.getElementById('statTotal').textContent = products.length;
+  document.getElementById('statListings').textContent = products.filter(p=>p.type==='listing').length;
+  document.getElementById('statCollections').textContent = products.filter(p=>p.type==='collection').length;
+  document.getElementById('statChecked').textContent = products.filter(p=>p.checkedAt && new Date(p.checkedAt).toDateString()===today).length;
+}
+
+function render() {
+  renderStats();
+  const el = document.getElementById('productsList');
+  if (products.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No products yet</div><div style="font-size:14px;color:#bbb;">Add your first product to start tracking</div></div>`;
+    return;
+  }
+  el.innerHTML = products.map(p => {
+    const badgeClass = p.type === 'listing' ? 'badge-listing' : 'badge-collection';
+    const badgeLabel = p.type === 'listing' ? 'Listing' : 'Collection';
+    const resultHtml = buildResultHtml(p);
+    return `
+    <div class="product-card" id="card-${p.id}">
+      <div class="product-header">
+        <span class="product-type-badge ${badgeClass}">${badgeLabel}</span>
+        <div class="product-info">
+          <div class="product-title">${escHtml(p.title)}</div>
+          <div class="product-url"><a href="${escHtml(p.url)}" target="_blank" style="color:#888;text-decoration:none;">${escHtml(p.url)}</a></div>
+          <div class="product-check-desc">${escHtml(p.check)}</div>
+        </div>
+        <div class="product-actions">
+          <button class="icon-btn" title="Refresh check" id="refreshBtn-${p.id}" onclick="refreshProduct('${p.id}')">↻</button>
+          <button class="icon-btn" title="Edit" onclick="openEditModal('${p.id}')">✎</button>
+          <button class="icon-btn" title="Delete" onclick="deleteProduct('${p.id}')">✕</button>
+        </div>
+      </div>
+      ${resultHtml}
+    </div>`;
+  }).join('');
+}
+
+function buildResultHtml(p) {
+  if (!p.result && !p.loading) {
+    return `<div class="result-panel"><div style="font-size:13px;color:#bbb;">Not checked yet — press ↻ to run a check</div></div>`;
+  }
+  if (p.loading) {
+    return `<div class="result-panel"><div class="result-loading"><div class="status-dot status-pending"></div><span>Checking<span class="dots"></span></span></div></div>`;
+  }
+  const dotClass = p.resultStatus === 'ok' ? 'status-ok' : p.resultStatus === 'warn' ? 'status-warn' : 'status-error';
+  const ts = p.checkedAt ? new Date(p.checkedAt).toLocaleString('en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+  return `<div class="result-panel">
+    <div class="result-meta">
+      <div class="status-dot ${dotClass}"></div>
+      <div class="result-timestamp">Last checked: ${ts}</div>
+    </div>
+    <div class="result-text">${escHtml(p.result)}</div>
+  </div>`;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function runCheck(product) {
+  product.loading = true;
+  product.result = null;
+  renderCardResult(product);
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    product.result = 'No API key set. Click "Add API key" at the top to add yours.';
+    product.resultStatus = 'error';
+    product.loading = false;
+    product.checkedAt = new Date().toISOString();
+    save(); renderCardResult(product); renderStats();
+    return;
+  }
+
+  try {
+  const pageTypeLabel = product.type === 'listing' ? 'individual product listing page' : 'product collection/category page';
+  const prompt = `You are a product sourcing assistant helping someone who buys and resells products.
+
+URL: ${product.url}
+Page type: ${pageTypeLabel}
+Source name: ${product.title}
+Check to perform: ${product.check}
+
+Instructions:
+1. Use your web_search tool to find information about this URL and its products.
+2. Search for the site name and product category to find relevant listings.
+3. If it is a COLLECTION page: list every product you find with name and price.
+4. If it is a LISTING page: report stock level, price, variants, and key details.
+5. Be specific and practical - this person is deciding whether to buy stock.
+
+Finish your response with:
+SUMMARY: [one sentence]
+STATUS: OK (products found / in stock) | WARNING (low stock / few products) | ISSUE (out of stock / no products / page inaccessible)`;
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      product.result = 'API error: ' + data.error.message;
+      product.resultStatus = 'error';
+    } else {
+      const fullText = (data.content || [])
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('\n')
+        .trim();
+      let status = 'ok';
+      let displayText = fullText;
+      const statusMatch = fullText.match(/STATUS:\s*(OK|WARNING|ISSUE)/i);
+      if (statusMatch) {
+        const s = statusMatch[1].toUpperCase();
+        status = s === 'OK' ? 'ok' : s === 'WARNING' ? 'warn' : 'error';
+        displayText = fullText.replace(/STATUS:\s*(OK|WARNING|ISSUE)/i, '').trim();
+      }
+      product.result = displayText || 'Check complete — no details returned.';
+      product.resultStatus = status;
+    }
+  } catch(e) {
+    product.result = 'Error running check: ' + e.message;
+    product.resultStatus = 'error';
+  }
+
+  product.loading = false;
+  product.checkedAt = new Date().toISOString();
+  save();
+  renderCardResult(product);
+  renderStats();
+}
+
+function renderCardResult(product) {
+  const card = document.getElementById('card-' + product.id);
+  if (!card) return;
+  const existing = card.querySelector('.result-panel');
+  if (existing) existing.remove();
+  card.insertAdjacentHTML('beforeend', buildResultHtml(product));
+  const btn = document.getElementById('refreshBtn-' + product.id);
+  if (btn) btn.style.animation = product.loading ? 'spin 1s linear infinite' : '';
+}
+
+async function refreshProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p || p.loading) return;
+  await runCheck(p);
+}
+
+async function refreshAll() {
+  const btn = document.getElementById('refreshAllBtn');
+  btn.disabled = true;
+  btn.textContent = '↻ Refreshing...';
+
+  const bar = document.getElementById('progressBar');
+  const fill = document.getElementById('progressFill');
+  bar.classList.add('visible');
+  fill.style.width = '0%';
+
+  const total = products.length;
+  for (let i = 0; i < total; i++) {
+    fill.style.width = ((i / total) * 100) + '%';
+    await runCheck(products[i]);
+    fill.style.width = (((i+1) / total) * 100) + '%';
+  }
+
+  bar.classList.remove('visible');
+  btn.disabled = false;
+  btn.textContent = '↻ Refresh all';
+  document.getElementById('lastRefreshLabel').textContent = 'Last refresh: ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+}
+
+document.getElementById('modalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+load();
+</script>
+</body>
+</html>
