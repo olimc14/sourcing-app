@@ -3,7 +3,7 @@ const https = require('https');
 function scrapeUrl(scraperKey, targetUrl) {
   return new Promise((resolve, reject) => {
     const encodedUrl = encodeURIComponent(targetUrl);
-    const path = `/v1/?api_key=${scraperKey}&url=${encodedUrl}&render=true`;
+    const path = `/?api_key=${scraperKey}&url=${encodedUrl}&render=true`;
     const options = {
       hostname: 'api.scraperapi.com',
       path: path,
