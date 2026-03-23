@@ -142,6 +142,10 @@
       <label>Anthropic API key</label>
       <input type="password" id="fApiKey" placeholder="sk-ant-...">
     </div>
+    <div class="field">
+      <label>ScraperAPI key</label>
+      <input type="password" id="fScraperKey" placeholder="your scraperapi key...">
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeApiModal()">Cancel</button>
       <button class="btn primary" onclick="saveApiKey()">Save key</button>
@@ -194,7 +198,8 @@ function updateApiBanner() {
 }
 
 function openApiModal() {
-  document.getElementById('fApiKey').value = getApiKey();
+   document.getElementById('fApiKey').value = getApiKey();
+  document.getElementById('fScraperKey').value = localStorage.getItem('sourcing_scraper_key') || '';
   document.getElementById('apiModalOverlay').classList.add('open');
   document.getElementById('fApiKey').focus();
 }
@@ -205,8 +210,11 @@ function closeApiModal() {
 
 function saveApiKey() {
   const key = document.getElementById('fApiKey').value.trim();
-  if (!key) { alert('Please enter your API key.'); return; }
+  const scraperKey = document.getElementById('fScraperKey').value.trim();
+  if (!key) { alert('Please enter your Anthropic API key.'); return; }
+  if (!scraperKey) { alert('Please enter your ScraperAPI key.'); return; }
   localStorage.setItem(API_KEY_STORAGE, key);
+  localStorage.setItem('sourcing_scraper_key', scraperKey);
   updateApiBanner();
   closeApiModal();
 }
@@ -387,14 +395,14 @@ STATUS: OK (products found / in stock) | WARNING (low stock / few products) | IS
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
+       body: JSON.stringify({
+        url: product.url,
+        type: product.type,
+        title: product.title,
+        check: product.check,
+        apiKey: apiKey,
+        scraperKey: localStorage.getItem('sourcing_scraper_key') || ''
       })
-    });
-
     const data = await response.json();
 
     if (data.error) {
