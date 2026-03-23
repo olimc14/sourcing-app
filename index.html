@@ -377,7 +377,8 @@ async function runCheck(product) {
         type: product.type,
         title: product.title,
         check: product.check,
-        apiKey: apiKey
+        apiKey: apiKey,
+        scraperKey: localStorage.getItem('sourcing_scraper_key') || ''
       })
     });
 
