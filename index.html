@@ -144,7 +144,7 @@
     </div>
     <div class="field">
       <label>ScraperAPI key</label>
-      <input type="password" id="fScraperKey" placeholder="your scraperapi key...">
+      <input type="password" id="fScraperKey" placeholder="ScraperAPI key...">
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeApiModal()">Cancel</button>
@@ -186,6 +186,7 @@
 <script>
 
 const API_KEY_STORAGE = 'sourcing_api_key';
+const SCRAPER_KEY_STORAGE = 'sourcing_scraper_key';
 
 function getApiKey() {
   return localStorage.getItem(API_KEY_STORAGE) || '';
@@ -198,8 +199,8 @@ function updateApiBanner() {
 }
 
 function openApiModal() {
-   document.getElementById('fApiKey').value = getApiKey();
-  document.getElementById('fScraperKey').value = localStorage.getItem('sourcing_scraper_key') || '';
+  document.getElementById('fApiKey').value = getApiKey();
+  document.getElementById('fScraperKey').value = localStorage.getItem(SCRAPER_KEY_STORAGE) || '';
   document.getElementById('apiModalOverlay').classList.add('open');
   document.getElementById('fApiKey').focus();
 }
@@ -214,7 +215,7 @@ function saveApiKey() {
   if (!key) { alert('Please enter your Anthropic API key.'); return; }
   if (!scraperKey) { alert('Please enter your ScraperAPI key.'); return; }
   localStorage.setItem(API_KEY_STORAGE, key);
-  localStorage.setItem('sourcing_scraper_key', scraperKey);
+  localStorage.setItem(SCRAPER_KEY_STORAGE, scraperKey);
   updateApiBanner();
   closeApiModal();
 }
@@ -368,52 +369,25 @@ async function runCheck(product) {
   }
 
   try {
-  const pageTypeLabel = product.type === 'listing' ? 'individual product listing page' : 'product collection/category page';
-  const prompt = `You are a product sourcing assistant helping someone who buys and resells products.
-
-URL: ${product.url}
-Page type: ${pageTypeLabel}
-Source name: ${product.title}
-Check to perform: ${product.check}
-
-Instructions:
-1. Use your web_search tool to find information about this URL and its products.
-2. Search for the site name and product category to find relevant listings.
-3. If it is a COLLECTION page: list every product you find with name and price.
-4. If it is a LISTING page: report stock level, price, variants, and key details.
-5. Be specific and practical - this person is deciding whether to buy stock.
-
-Finish your response with:
-SUMMARY: [one sentence]
-STATUS: OK (products found / in stock) | WARNING (low stock / few products) | ISSUE (out of stock / no products / page inaccessible)`;
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/.netlify/functions/check', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-       body: JSON.stringify({
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         url: product.url,
         type: product.type,
         title: product.title,
         check: product.check,
-        apiKey: apiKey,
-        scraperKey: localStorage.getItem('sourcing_scraper_key') || ''
+        apiKey: apiKey
       })
+    });
+
     const data = await response.json();
 
     if (data.error) {
-      product.result = 'API error: ' + data.error.message;
+      product.result = 'API error: ' + data.error;
       product.resultStatus = 'error';
     } else {
-      const fullText = (data.content || [])
-        .filter(b => b.type === 'text')
-        .map(b => b.text)
-        .join('\n')
-        .trim();
+      const fullText = (data.result || '').trim();
       let status = 'ok';
       let displayText = fullText;
       const statusMatch = fullText.match(/STATUS:\s*(OK|WARNING|ISSUE)/i);
